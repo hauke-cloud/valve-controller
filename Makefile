@@ -1,7 +1,11 @@
 CONTROLLER_GEN ?= go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
 ENVTEST ?= go run sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
-.PHONY: generate manifests setup-envtest build test lint fmt
+.PHONY: generate manifests setup-envtest build test lint fmt tidy
+
+tidy:
+	go mod tidy
+	go mod download
 
 generate:
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
@@ -27,4 +31,3 @@ lint:
 
 fmt:
 	gofmt -s -w .
-	goimports -w .

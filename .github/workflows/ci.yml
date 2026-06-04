@@ -50,9 +50,10 @@ jobs:
           run-lint: "true"
           lint-command: "gofmt -s -l . && go vet ./..."
 
-          # Pre-build: Generate CRDs and manifests
+          # Pre-build: Resolve dependencies, then generate CRDs and manifests
           pre-build-command: |
-            echo "Generating CRDs and manifests..."
+            go mod tidy
+            go mod download
             make generate
             make manifests
             make setup-envtest

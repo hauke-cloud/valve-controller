@@ -65,7 +65,9 @@ func main() {
 		hostname = "unknown"
 	}
 
+	// controller-runtime exposes its own registry; cast it to both interfaces we need.
 	promReg := ctrlmetrics.Registry.(prometheus.Registerer)
+	promGatherer := ctrlmetrics.Registry.(prometheus.Gatherer)
 	m := metrics.New(promReg)
 
 	mqttMgr := mqtt.NewManager(hostname, m, log.With("component", "mqtt"))
@@ -124,7 +126,7 @@ func main() {
 
 	apiServer := &http.Server{
 		Addr:      *apiAddr,
-		Handler:   restapi.NewRouter(restapi.NewHandler(sched, mqttMgr)),
+		Handler:   restapi.NewRouter(restapi.NewHandler(sched, mqttMgr), promGatherer),
 		TLSConfig: tlsCfg,
 	}
 
