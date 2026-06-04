@@ -13,7 +13,6 @@ generate:
 manifests:
 	$(CONTROLLER_GEN) crd \
 		rbac:roleName=controller-manager-role \
-		object:headerFile="hack/boilerplate.go.txt" \
 		paths="./api/..." \
 		output:crd:artifacts:config=config/crd/bases
 

@@ -50,13 +50,14 @@ jobs:
           run-lint: "true"
           lint-command: "gofmt -s -l . && go vet ./..."
 
-          # Pre-build: Resolve dependencies, then generate CRDs and manifests
+          # Pre-build: Resolve dependencies, generate deepcopy/CRDs, auto-format
           pre-build-command: |
             go mod tidy
             go mod download
             make generate
             make manifests
             make setup-envtest
+            gofmt -s -w .
 
           # Build Arguments
           build-args: |
