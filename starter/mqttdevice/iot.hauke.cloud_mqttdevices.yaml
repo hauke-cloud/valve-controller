@@ -1,0 +1,167 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.0
+  name: mqttdevices.iot.hauke.cloud
+spec:
+  group: iot.hauke.cloud
+  names:
+    kind: MQTTDevice
+    listKind: MQTTDeviceList
+    plural: mqttdevices
+    shortNames:
+    - md
+    singular: mqttdevice
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.friendlyName
+      name: FriendlyName
+      type: string
+    - jsonPath: .spec.bridgeRef.name
+      name: Bridge
+      type: string
+    - jsonPath: .status.modelId
+      name: Model
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              bridgeRef:
+                description: BridgeRef identifies the MQTTBridge that reported this device.
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              disabled:
+                default: false
+                description: Disabled prevents the device from being polled or commanded.
+                type: boolean
+              friendlyName:
+                description: |-
+                  FriendlyName is the human-readable name on the Tasmota bridge.
+                  Changing this field triggers a rename command to the bridge.
+                minLength: 1
+                type: string
+              ieeeAddr:
+                description: IEEEAddr is the long (64-bit) IEEE address of the Zigbee device.
+                pattern: ^0x[0-9A-Fa-f]+$
+                type: string
+              shortAddr:
+                description: ShortAddr is the 16-bit network address assigned by the coordinator.
+                pattern: ^0x[0-9A-Fa-f]{4}$
+                type: string
+              typeRef:
+                description: TypeRef optionally links this device to a type-specific controller CR.
+                properties:
+                  apiGroup:
+                    type: string
+                  kind:
+                    type: string
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - apiGroup
+                - kind
+                - name
+                - namespace
+                type: object
+            required:
+            - bridgeRef
+            - friendlyName
+            - ieeeAddr
+            type: object
+          status:
+            properties:
+              batteryPercentage:
+                format: int32
+                type: integer
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current state.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              endpoints:
+                items:
+                  format: int32
+                  type: integer
+                type: array
+              lastSeenTime:
+                format: date-time
+                type: string
+              lastUpdatedTime:
+                format: date-time
+                type: string
+              linkQuality:
+                format: int32
+                type: integer
+              manufacturer:
+                type: string
+              modelId:
+                type: string
+              reachable:
+                type: boolean
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

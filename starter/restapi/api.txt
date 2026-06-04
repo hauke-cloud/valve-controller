@@ -1,0 +1,7 @@
+GET valves # get list of all managed valves
+GET valves/<valve friendlyname/short addr/long addr> # get valve details
+GET valves/<valve friendlyname/short addr/long addr>/state # get valve state (open/close/pending/running)
+
+PUT valves/<valve friendlyname/short addr/long addr>/on # opens valve
+PUT valves/<valve friendlyname/short addr/long addr>/on?duration=15s # opens valve for certain time
+PUT valves/<valve friendlyname/short addr/long addr>/close # closes valve

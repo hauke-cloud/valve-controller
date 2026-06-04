@@ -1,0 +1,15 @@
+topic: tele/<bridgename>/SENSOR
+payload: |
+  {
+    "ZbReceived": {
+      "0xDA76": {
+        "Device": "0xDA76",
+        "Name": "valve-center",
+        "lastValveOpenDuration": 745890,
+        "dailyIrrigationVolume": 0,
+        "Power": 1,
+        "Endpoint": 1,
+        "LinkQuality": 36
+      }
+    }
+  }

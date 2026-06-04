@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "valve-controller.fullname" . }}
+  labels:
+    {{- include "valve-controller.labels" . | nindent 4 }}
+rules:
+  # MQTTValve — full CRUD for status subresource, read-only for spec
+  - apiGroups: ["iot.hauke.cloud"]
+    resources: ["mqttvalves"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["iot.hauke.cloud"]
+    resources: ["mqttvalves/status"]
+    verbs: ["get", "update", "patch"]
+  # MQTTDevice and MQTTBridge — read-only
+  - apiGroups: ["iot.hauke.cloud"]
+    resources: ["mqttdevices", "mqttbridges"]
+    verbs: ["get", "list", "watch"]
+  # Secrets — for reading MQTT broker credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  # Events — for recording controller events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  # Leader election
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

@@ -1,0 +1,6 @@
+topic: stat/tasmota_office/RESULT
+payload: |
+  {
+    "ZbSend": "Done"
+  }
+warning: this only confirms, that tasmota received the command. it not guarantees, that the valve was opened/closed.

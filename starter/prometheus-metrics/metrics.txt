@@ -1,0 +1,4 @@
+- valve_open
+- irrigation
+
+etc. (choose some you think are of interest)

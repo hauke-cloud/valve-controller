@@ -1,0 +1,147 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.0
+  name: mqttvalves.iot.hauke.cloud
+spec:
+  group: iot.hauke.cloud
+  names:
+    kind: MQTTValve
+    listKind: MQTTValveList
+    plural: mqttvalves
+    shortNames:
+    - mv
+    singular: mqttvalve
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.valveState
+      name: State
+      type: string
+    - jsonPath: .status.currentActionID
+      name: Action
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              commandTimeoutSeconds:
+                default: 30
+                description: CommandTimeoutSeconds is the per-attempt timeout waiting for device confirmation.
+                format: int32
+                maximum: 300
+                minimum: 5
+                type: integer
+              disabled:
+                default: false
+                description: Disabled prevents the valve from accepting open commands.
+                type: boolean
+              keepClosedIntervalSeconds:
+                default: 300
+                description: KeepClosedIntervalSeconds controls how often the controller re-sends the close command as a safety net.
+                format: int32
+                maximum: 3600
+                minimum: 60
+                type: integer
+              maxOpenDurationSeconds:
+                default: 3600
+                description: MaxOpenDurationSeconds is a hard safety limit on how long the valve may remain open. 0 disables the limit.
+                format: int32
+                minimum: 0
+                type: integer
+              retryCount:
+                default: 3
+                description: RetryCount is the number of send attempts before an action is marked failed.
+                format: int32
+                maximum: 10
+                minimum: 1
+                type: integer
+            type: object
+          status:
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current state.
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              currentActionID:
+                description: CurrentActionID is the ID of the in-progress action; empty when idle.
+                type: string
+              dailyIrrigationVolume:
+                description: DailyIrrigationVolume from the last device sensor report.
+                type: number
+              lastCloseTime:
+                description: LastCloseTime is when the valve was last confirmed closed.
+                format: date-time
+                type: string
+              lastOpenTime:
+                description: LastOpenTime is when the valve was last confirmed open.
+                format: date-time
+                type: string
+              lastValveOpenDuration:
+                description: LastValveOpenDuration from the last device report, in milliseconds.
+                format: int64
+                type: integer
+              valveState:
+                description: ValveState is the last confirmed physical state from the device.
+                enum:
+                - open
+                - closed
+                - unknown
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

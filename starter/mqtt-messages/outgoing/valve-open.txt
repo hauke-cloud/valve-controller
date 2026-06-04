@@ -1,0 +1,8 @@
+topic: cmnd/<bridgename>/ZbSend
+payload: |
+  {
+    "Device": "valve-right",
+    "Send": {
+      "Power": "ON"
+    }
+  }

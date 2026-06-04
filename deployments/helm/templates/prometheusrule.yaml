@@ -1,0 +1,103 @@
+{{- if .Values.prometheus.rules.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "valve-controller.fullname" . }}
+  namespace: {{ .Values.prometheus.rules.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "valve-controller.labels" . | nindent 4 }}
+    {{- with .Values.prometheus.rules.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: valve-controller.valves
+      interval: 30s
+      rules:
+        # --- Recording rules ---
+        - record: valve_controller:valve_open:count
+          expr: count(valve_controller_valve_state == 1)
+
+        - record: valve_controller:actions_fulfilled_rate5m
+          expr: rate(valve_controller_actions_total{result="fulfilled"}[5m])
+
+        # --- Alerting rules ---
+        - alert: ValveStuckOpen
+          expr: |
+            valve_controller_valve_state == 1
+            unless on(name, namespace)
+              (valve_controller_actions_total{type=~"open|open_timed",result="fulfilled"} > 0)
+          for: 10m
+          labels:
+            severity: critical
+            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "Valve {{ "{{" }} $labels.name {{ "}}" }} is stuck open"
+            description: |
+              Valve {{ "{{" }} $labels.name {{ "}}" }} in namespace {{ "{{" }} $labels.namespace {{ "}}" }}
+              has been open for more than 10 minutes without a tracked open action.
+              This may indicate a Tasmota bridge failure — check MQTT connectivity.
+
+        - alert: ValveActionFailed
+          expr: rate(valve_controller_actions_total{result="failed"}[15m]) > 0
+          for: 1m
+          labels:
+            severity: warning
+            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "Valve action failing for {{ "{{" }} $labels.name {{ "}}" }}"
+            description: |
+              Valve {{ "{{" }} $labels.name {{ "}}" }} has failing actions.
+              The device may be unreachable or the Tasmota bridge is not responding.
+
+        - alert: MQTTBridgeDisconnected
+          expr: valve_controller_mqtt_connection_state == 0
+          for: 2m
+          labels:
+            severity: critical
+            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "MQTT bridge {{ "{{" }} $labels.bridge {{ "}}" }} disconnected"
+            description: |
+              The MQTT bridge {{ "{{" }} $labels.bridge {{ "}}" }} has been disconnected for
+              more than 2 minutes. Valve commands cannot be sent or confirmed.
+
+        - alert: ValveBatteryLow
+          expr: valve_controller_battery_percentage < 20
+          for: 5m
+          labels:
+            severity: warning
+            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "Low battery on valve {{ "{{" }} $labels.name {{ "}}" }}"
+            description: |
+              Valve {{ "{{" }} $labels.name {{ "}}" }} battery is at
+              {{ "{{" }} $value | humanize {{ "}}" }}%. Replace the battery soon.
+
+    - name: valve-controller.mqtt
+      interval: 30s
+      rules:
+        - alert: MQTTNoMessages
+          expr: |
+            rate(valve_controller_mqtt_messages_received_total[5m]) == 0
+            and valve_controller_mqtt_connection_state == 1
+          for: 10m
+          labels:
+            severity: warning
+            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          annotations:
+            summary: "No MQTT messages from bridge {{ "{{" }} $labels.bridge {{ "}}" }}"
+            description: |
+              Bridge {{ "{{" }} $labels.bridge {{ "}}" }} appears connected but has sent no
+              messages for 10 minutes. The Tasmota device may have stopped reporting.
+{{- end }}

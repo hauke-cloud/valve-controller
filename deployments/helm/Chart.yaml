@@ -1,0 +1,18 @@
+apiVersion: v2
+name: valve-controller
+description: Kubernetes controller for managing Zigbee water valves via Tasmota MQTT bridges.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - iot
+  - mqtt
+  - zigbee
+  - irrigation
+  - valve
+home: https://github.com/hauke-cloud/iot
+sources:
+  - https://github.com/hauke-cloud/iot
+maintainers:
+  - name: Hauke Mettendorf
+    email: hauke@mettendorf.it

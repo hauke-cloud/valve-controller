@@ -1,0 +1,11 @@
+apiVersion: iot.hauke.cloud/v1alpha1
+kind: MQTTValve
+metadata:
+  name: valve-center
+  namespace: mqtt
+spec:
+  disabled: false # set by user
+status:
+  status: close
+  dailyIrrigationVolume: 0
+  lastValveOpenDuration: 0
