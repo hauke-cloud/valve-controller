@@ -18,7 +18,7 @@ manifests:
 		output:crd:artifacts:config=config/crd/bases
 
 setup-envtest:
-	$(ENVTEST) use --bin-dir /usr/local/kubebuilder/bin
+	$(ENVTEST) use --bin-dir ./bin/envtest
 
 build:
 	CGO_ENABLED=0 go build -o bin/controller ./cmd/controller/...
