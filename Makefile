@@ -11,7 +11,7 @@ generate:
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
 manifests:
-	$(CONTROLLER_GEN) crd:trivialVersions=false \
+	$(CONTROLLER_GEN) crd \
 		rbac:roleName=controller-manager-role \
 		object:headerFile="hack/boilerplate.go.txt" \
 		paths="./api/..." \
