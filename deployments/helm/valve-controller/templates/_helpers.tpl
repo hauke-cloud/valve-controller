@@ -60,8 +60,12 @@ ServiceAccount name.
 {{- end }}
 
 {{/*
-TLS secret name (created by cert-manager).
+TLS secret name — uses tls.existingSecret when set, otherwise a generated name.
 */}}
 {{- define "valve-controller.tlsSecretName" -}}
-{{- include "valve-controller.fullname" . }}-tls
+{{- if .Values.tls.existingSecret }}
+{{- .Values.tls.existingSecret }}
+{{- else }}
+{{- printf "%s-tls" (include "valve-controller.fullname" .) }}
+{{- end }}
 {{- end }}

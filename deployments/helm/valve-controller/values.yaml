@@ -35,19 +35,27 @@ api:
   port: 8443
   logLevel: info
 
-# cert-manager Certificate for the REST API server
+# TLS configuration for the REST API mTLS server.
 tls:
-  # cert-manager issuer reference for the server certificate
-  issuerRef:
-    name: cluster-issuer          # name of the ClusterIssuer or Issuer
-    kind: ClusterIssuer
+  # Name of an existing Secret containing tls.crt and tls.key.
+  # When set, the chart uses this secret directly and does not create a Certificate.
+  existingSecret: ""
   # Secret containing the CA certificate used to verify client certs.
   # Must have a key named "ca.crt".
   clientCASecretName: valve-controller-client-ca
-  # DNS names for the server certificate
+  # DNS names included in the server certificate (used by cert-manager).
   dnsNames:
     - valve-controller
     - valve-controller.mqtt.svc.cluster.local
+
+# cert-manager integration — creates a Certificate resource for the API server.
+# Set enabled: true and provide an issuerRef when cert-manager is available.
+# When disabled, supply tls.existingSecret with a pre-provisioned Secret.
+certManager:
+  enabled: false
+  issuerRef:
+    name: cluster-issuer
+    kind: ClusterIssuer
 
 service:
   type: ClusterIP

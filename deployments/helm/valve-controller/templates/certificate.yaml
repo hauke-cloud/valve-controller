@@ -1,4 +1,4 @@
-{{- if .Values.tls.issuerRef }}
+{{- if .Values.certManager.enabled }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -9,8 +9,8 @@ metadata:
 spec:
   secretName: {{ include "valve-controller.tlsSecretName" . }}
   issuerRef:
-    name: {{ .Values.tls.issuerRef.name }}
-    kind: {{ .Values.tls.issuerRef.kind | default "ClusterIssuer" }}
+    name: {{ .Values.certManager.issuerRef.name }}
+    kind: {{ .Values.certManager.issuerRef.kind | default "ClusterIssuer" }}
   dnsNames:
     {{- toYaml .Values.tls.dnsNames | nindent 4 }}
   usages:
