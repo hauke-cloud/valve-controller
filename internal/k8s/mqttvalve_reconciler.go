@@ -95,6 +95,7 @@ func (r *MQTTValveReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		BridgeName:   bridge.Spec.BridgeName,
 		BridgeHost:   bridge.Spec.Host,
 		BridgePort:   port,
+		State:        device.ValveState(valve.Status.ValveState),
 		Config: device.ValveConfig{
 			Disabled:           valve.Spec.Disabled || dev.Spec.Disabled,
 			RetryCount:         retryCount,

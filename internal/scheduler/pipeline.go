@@ -47,11 +47,15 @@ func newPipeline(info device.ValveInfo, mgr *mqtt.Manager, w StatusWriter, m *me
 	}
 }
 
-// UpdateConfig refreshes the valve spec without restarting the goroutine.
+// UpdateConfig refreshes spec-derived fields without touching live sensor state.
 func (p *pipeline) UpdateConfig(info device.ValveInfo) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.info = info
+	p.info.Config = info.Config
+	p.info.FriendlyName = info.FriendlyName
+	p.info.BridgeName = info.BridgeName
+	p.info.BridgeHost = info.BridgeHost
+	p.info.BridgePort = info.BridgePort
 }
 
 // Enqueue adds an action to the pipeline.
