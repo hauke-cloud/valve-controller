@@ -83,3 +83,26 @@ volumes:
 - Feature flags follow the pattern: `<feature>.enabled: false` as the safe default (prometheus.serviceMonitor, prometheus.rules, certManager, crds.install).
 - CRD installation is controlled by `crds.install: true` (or `installCRD: true` — align with the chart's existing key).
 - All namespace fields default to `""` which templates resolve to `.Release.Namespace`.
+
+## OCI Image Repository
+
+The image repository is always `ghcr.io/hauke-cloud/<application>` — never include the intermediate `iot/` path segment:
+
+```yaml
+# CORRECT:
+image:
+  repository: ghcr.io/hauke-cloud/valve-controller
+
+# WRONG:
+image:
+  repository: ghcr.io/hauke-cloud/iot/valve-controller
+```
+
+## Chart Location
+
+Helm charts are stored at `deployments/helm/<application>` within the repository root — not under `charts/`, `helm/`, or any other path:
+
+```
+deployments/helm/valve-controller/
+deployments/helm/mqtt-device-controller/
+```

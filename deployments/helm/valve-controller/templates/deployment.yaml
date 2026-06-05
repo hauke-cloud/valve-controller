@@ -37,7 +37,7 @@ spec:
             - --log-level={{ .Values.api.logLevel }}
             - --tls-cert=/tls/tls.crt
             - --tls-key=/tls/tls.key
-            - --tls-client-ca=/tls/ca.crt
+            - --tls-client-ca=/tls-ca/ca.crt
           ports:
             - name: api
               containerPort: {{ .Values.api.port }}
@@ -59,8 +59,7 @@ spec:
               mountPath: /tls
               readOnly: true
             - name: client-ca
-              mountPath: /tls/ca.crt
-              subPath: ca.crt
+              mountPath: /tls-ca
               readOnly: true
       volumes:
         - name: tls
