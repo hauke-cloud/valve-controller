@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -113,22 +114,24 @@ func (r *MQTTValveReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *MQTTValveReconciler) UpdateValveStatus(
 	ctx context.Context, name, namespace string, state device.ValveState, actionID string,
 ) error {
-	var valve iotv1alpha1.MQTTValve
-	if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &valve); err != nil {
-		return client.IgnoreNotFound(err)
-	}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var valve iotv1alpha1.MQTTValve
+		if err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &valve); err != nil {
+			return client.IgnoreNotFound(err)
+		}
 
-	valve.Status.ValveState = iotv1alpha1.ValveState(state)
-	valve.Status.CurrentActionID = actionID
-	now := metav1.Now()
-	switch state {
-	case device.ValveStateOpen:
-		valve.Status.LastOpenTime = &now
-	case device.ValveStateClosed:
-		valve.Status.LastCloseTime = &now
-	}
+		valve.Status.ValveState = iotv1alpha1.ValveState(state)
+		valve.Status.CurrentActionID = actionID
+		now := metav1.Now()
+		switch state {
+		case device.ValveStateOpen:
+			valve.Status.LastOpenTime = &now
+		case device.ValveStateClosed:
+			valve.Status.LastCloseTime = &now
+		}
 
-	return r.Status().Update(ctx, &valve)
+		return r.Status().Update(ctx, &valve)
+	})
 }
 
 func (r *MQTTValveReconciler) findDevice(ctx context.Context, valveName, namespace string) (*iotv1alpha1.MQTTDevice, error) {
@@ -151,19 +154,25 @@ func (r *MQTTValveReconciler) findDevice(ctx context.Context, valveName, namespa
 }
 
 func (r *MQTTValveReconciler) patchReadyCondition(ctx context.Context, valve *iotv1alpha1.MQTTValve, ready bool, reason, msg string) error {
-	status := metav1.ConditionTrue
+	condStatus := metav1.ConditionTrue
 	if !ready {
-		status = metav1.ConditionFalse
+		condStatus = metav1.ConditionFalse
 	}
-	setCondition(&valve.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             status,
-		Reason:             reason,
-		Message:            msg,
-		LastTransitionTime: metav1.Now(),
-		ObservedGeneration: valve.Generation,
+	key := types.NamespacedName{Name: valve.Name, Namespace: valve.Namespace}
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		if err := r.Get(ctx, key, valve); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+		setCondition(&valve.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             condStatus,
+			Reason:             reason,
+			Message:            msg,
+			LastTransitionTime: metav1.Now(),
+			ObservedGeneration: valve.Generation,
+		})
+		return r.Status().Update(ctx, valve)
 	})
-	return r.Status().Update(ctx, valve)
 }
 
 func setCondition(conditions *[]metav1.Condition, newCond metav1.Condition) {

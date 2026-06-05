@@ -167,6 +167,7 @@ func (bc *BridgeClient) SendZbSend(ctx context.Context, deviceName string, power
 		return fmt.Errorf("build ZbSend payload: %w", err)
 	}
 	topic := fmt.Sprintf("cmnd/%s/ZbSend", bc.cfg.BridgeName)
+	bc.log.Debug("publishing ZbSend", "topic", topic, "payload", string(payload))
 	token := bc.client.Publish(topic, 1, false, payload)
 	select {
 	case <-token.Done():
