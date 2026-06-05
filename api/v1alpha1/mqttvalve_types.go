@@ -38,7 +38,7 @@ type MQTTValveSpec struct {
 
 	// KeepClosedIntervalSeconds controls how often the controller re-sends the close command as a safety net.
 	// +kubebuilder:default=300
-	// +kubebuilder:validation:Minimum=60
+	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3600
 	KeepClosedIntervalSeconds int32 `json:"keepClosedIntervalSeconds,omitempty"`
 

@@ -34,7 +34,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - --api-addr=:{{ .Values.api.port }}
-            - --log-level={{ .Values.api.logLevel }}
+            - --log-level={{ .Values.logLevel }}
             - --tls-cert=/tls/tls.crt
             - --tls-key=/tls/tls.key
             - --tls-client-ca=/tls-ca/ca.crt

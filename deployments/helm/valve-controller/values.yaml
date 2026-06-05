@@ -1,5 +1,7 @@
 replicaCount: 1
 
+logLevel: info
+
 image:
   repository: ghcr.io/hauke-cloud/valve-controller
   pullPolicy: IfNotPresent
@@ -33,7 +35,6 @@ securityContext:
 # REST API mTLS server
 api:
   port: 8443
-  logLevel: info
 
 # TLS configuration for the REST API mTLS server.
 tls:

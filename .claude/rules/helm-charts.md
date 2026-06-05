@@ -77,6 +77,56 @@ volumes:
       secretName: {{ include "<chart>.tlsSecretName" . }}
 ```
 
+## Health Probe Paths
+
+controller-runtime registers its health endpoints on the **probe port** (default 8081) at `/healthz` and `/readyz`. These are **not** under the REST API prefix (`/api/v1/`).
+
+Always use the bare paths in `values.yaml`:
+
+```yaml
+# CORRECT:
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: probe
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: probe
+
+# WRONG — controller-runtime never serves these paths:
+livenessProbe:
+  httpGet:
+    path: /api/v1/healthz
+    port: probe
+```
+
+The probe port and the API port are separate: the API server (mTLS, REST routes) runs on its own port; the probe port is served directly by controller-runtime's `HealthProbeBindAddress`.
+
+## TLS Volume Mounts
+
+Do **not** mount a second secret as a file inside an already-mounted secret directory. Kubelet cannot bind-mount a file from a different source into a path that is already a mounted directory.
+
+```yaml
+# WRONG — /tls is a mounted directory; kubelet rejects the subPath file inside it:
+volumeMounts:
+  - name: tls
+    mountPath: /tls
+  - name: client-ca
+    mountPath: /tls/ca.crt   # conflict
+    subPath: ca.crt
+
+# CORRECT — give the second secret its own mount point:
+volumeMounts:
+  - name: tls
+    mountPath: /tls
+  - name: client-ca
+    mountPath: /tls-ca       # separate directory; ca.crt available at /tls-ca/ca.crt
+```
+
+Update the corresponding `--tls-client-ca` flag to match the new path (`/tls-ca/ca.crt`).
+
 ## General Helm Conventions
 
 - Reference sibling controllers (`../mqtt-device-controller`, `../mqtt-bridge-controller`) as the canonical pattern source when adding new chart features.
