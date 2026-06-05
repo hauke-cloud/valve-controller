@@ -47,6 +47,14 @@ type MQTTValveSpec struct {
 	// +kubebuilder:default=3600
 	// +kubebuilder:validation:Minimum=0
 	MaxOpenDurationSeconds int32 `json:"maxOpenDurationSeconds,omitempty"`
+
+	// CloseRepeatCount is the number of times the close command is sent per attempt.
+	// Sending the command multiple times improves reliability for valves that sometimes
+	// ignore a single close signal, especially after short open durations.
+	// +kubebuilder:default=3
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
+	CloseRepeatCount int32 `json:"closeRepeatCount,omitempty"`
 }
 
 // ValveState is the confirmed physical state of the valve.

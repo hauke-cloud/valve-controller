@@ -82,6 +82,10 @@ func (r *MQTTValveReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if retryCount == 0 {
 		retryCount = 3
 	}
+	closeRepeat := int(valve.Spec.CloseRepeatCount)
+	if closeRepeat == 0 {
+		closeRepeat = 3
+	}
 	maxOpen := time.Duration(valve.Spec.MaxOpenDurationSeconds) * time.Second
 
 	info := device.ValveInfo{
@@ -97,6 +101,7 @@ func (r *MQTTValveReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			CommandTimeout:     cmdTimeout,
 			KeepClosedInterval: keepClosed,
 			MaxOpenDuration:    maxOpen,
+			CloseRepeatCount:   closeRepeat,
 		},
 	}
 

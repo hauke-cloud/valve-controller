@@ -183,6 +183,13 @@ func (p *pipeline) execute(ctx context.Context, a *Action) {
 		return
 	}
 
+	// After a confirmed close, do an advisory ZbStatus3 check to catch valves that
+	// acknowledge the command but remain physically open.
+	if !power {
+		info := p.GetInfo()
+		go p.checkClosedWithStatus3(info.BridgeName, info.FriendlyName)
+	}
+
 	now := time.Now().UTC()
 	a.FulfilledAt = &now
 	a.State = ActionStateFulfilled
@@ -212,6 +219,9 @@ func (p *pipeline) execute(ctx context.Context, a *Action) {
 		_ = p.attemptWithRetry(closeCtx, closeAction, false, cfg.RetryCount, cfg.CommandTimeout)
 		cancel2()
 
+		info := p.GetInfo()
+		go p.checkClosedWithStatus3(info.BridgeName, info.FriendlyName)
+
 		closedAt := time.Now().UTC()
 		a.ClosedAt = &closedAt
 		a.State = ActionStateFulfilled
@@ -221,9 +231,18 @@ func (p *pipeline) execute(ctx context.Context, a *Action) {
 }
 
 // attemptWithRetry sends the command and waits for device confirmation, retrying up to retryCount times.
+// For close actions the command is sent CloseRepeatCount times per attempt to improve reliability.
 func (p *pipeline) attemptWithRetry(ctx context.Context, a *Action, power bool, retryCount int, timeout time.Duration) error {
 	a.State = ActionStateSending
 	info := p.GetInfo()
+
+	sendCount := 1
+	if !power {
+		sendCount = info.Config.CloseRepeatCount
+		if sendCount < 1 {
+			sendCount = 1
+		}
+	}
 
 	for attempt := 0; attempt < retryCount; attempt++ {
 		if attempt > 0 {
@@ -234,8 +253,7 @@ func (p *pipeline) attemptWithRetry(ctx context.Context, a *Action, power bool, 
 		a.Attempts = attempt + 1
 		a.LastAttempt = time.Now().UTC()
 
-		// Register waiter before publishing to avoid a race where the confirmation arrives
-		// before we start listening.
+		// Register waiter before the first publish to avoid missing a fast confirmation.
 		expectedPower := 0
 		if power {
 			expectedPower = 1
@@ -244,9 +262,24 @@ func (p *pipeline) attemptWithRetry(ctx context.Context, a *Action, power bool, 
 		waitCh := waitForPower(waitCtx, info.FriendlyName, expectedPower, p.mqttMgr.Dispatcher())
 
 		a.State = ActionStateWaitingConfirmation
-		if err := p.mqttMgr.SendZbSend(ctx, info.BridgeName, info.FriendlyName, power); err != nil {
+
+		published := false
+		for i := 0; i < sendCount; i++ {
+			if i > 0 {
+				select {
+				case <-time.After(500 * time.Millisecond):
+				case <-waitCtx.Done():
+				}
+			}
+			if err := p.mqttMgr.SendZbSend(ctx, info.BridgeName, info.FriendlyName, power); err != nil {
+				p.log.Warn("ZbSend publish failed", "actionID", a.ID, "attempt", attempt+1, "repeat", i+1, "err", err)
+			} else {
+				published = true
+			}
+		}
+
+		if !published {
 			waitCancel()
-			p.log.Warn("ZbSend publish failed", "actionID", a.ID, "err", err)
 			continue
 		}
 
@@ -351,6 +384,26 @@ func (p *pipeline) addToHistory(a *Action) {
 	p.history = append([]*Action{a}, p.history...)
 	if len(p.history) > maxHistorySize {
 		p.history = p.history[:maxHistorySize]
+	}
+}
+
+// checkClosedWithStatus3 polls ZbStatus3 two seconds after a close command was confirmed
+// and logs a warning if the device reports it is still open. Advisory only — Tasmota sometimes
+// reports closed even when the valve is physically open, but Power=1 here is a red flag.
+func (p *pipeline) checkClosedWithStatus3(bridgeName, deviceName string) {
+	time.Sleep(2 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	r, err := p.mqttMgr.SendZbStatus3(ctx, bridgeName, deviceName, 8*time.Second)
+	if err != nil {
+		p.log.Debug("ZbStatus3 check after close failed", "device", deviceName, "err", err)
+		return
+	}
+	if r.Power != nil && *r.Power != 0 {
+		p.log.Warn("ZbStatus3 reports valve still open after close command",
+			"device", deviceName, "power", *r.Power)
+	} else {
+		p.log.Debug("ZbStatus3 confirms valve closed", "device", deviceName)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/hauke-cloud/iot/valve-controller/internal/metrics"
 )
@@ -80,6 +81,17 @@ func (mgr *Manager) Remove(bridgeName string) {
 		bc.Disconnect()
 		mgr.log.Info("bridge client removed", "bridge", bridgeName)
 	}
+}
+
+// SendZbStatus3 queries a device's state via ZbStatus3 on the given bridge.
+func (mgr *Manager) SendZbStatus3(ctx context.Context, bridgeName, deviceName string, timeout time.Duration) (ZbStatus3ValveResult, error) {
+	mgr.mu.RLock()
+	bc, ok := mgr.bridges[bridgeName]
+	mgr.mu.RUnlock()
+	if !ok {
+		return ZbStatus3ValveResult{}, fmt.Errorf("bridge %q not connected", bridgeName)
+	}
+	return bc.SendZbStatus3(ctx, deviceName, timeout)
 }
 
 // SendZbSend sends a ZbSend command on the bridge identified by bridgeName.

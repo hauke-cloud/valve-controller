@@ -115,6 +115,33 @@ func BridgeNameFromTopic(topic string) string {
 	return parts[1]
 }
 
+// ZbStatus3ValveResult holds the Power state from one device entry in a ZbStatus3 response.
+type ZbStatus3ValveResult struct {
+	DeviceName string
+	Power      *int
+}
+
+// ParseZbStatus3ValvePower extracts device names and Power values from a stat/+/RESULT ZbStatus3 payload.
+// Returns an empty slice (no error) when the payload contains no ZbStatus3 key.
+func ParseZbStatus3ValvePower(payload []byte) ([]ZbStatus3ValveResult, error) {
+	var wrapper struct {
+		ZbStatus3 []struct {
+			Name  string `json:"Name"`
+			Power *int   `json:"Power"`
+		} `json:"ZbStatus3"`
+	}
+	if err := json.Unmarshal(payload, &wrapper); err != nil {
+		return nil, fmt.Errorf("unmarshal ZbStatus3: %w", err)
+	}
+	out := make([]ZbStatus3ValveResult, 0, len(wrapper.ZbStatus3))
+	for _, item := range wrapper.ZbStatus3 {
+		if item.Name != "" {
+			out = append(out, ZbStatus3ValveResult{DeviceName: item.Name, Power: item.Power})
+		}
+	}
+	return out, nil
+}
+
 // ZbSendPayload builds the JSON payload for cmnd/<bridge>/ZbSend.
 func ZbSendPayload(deviceName string, power bool) ([]byte, error) {
 	powerVal := "OFF"

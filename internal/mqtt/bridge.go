@@ -45,14 +45,18 @@ type BridgeClient struct {
 	client     pahomqtt.Client
 	mu         sync.Mutex
 	connected  bool
+
+	zbStatus3Mu  sync.Mutex
+	zbStatus3Chs map[string]chan ZbStatus3ValveResult // keyed by device friendly name
 }
 
 func newBridgeClient(cfg BridgeConfig, disp *Dispatcher, m *metrics.Metrics, log *slog.Logger) *BridgeClient {
 	bc := &BridgeClient{
-		cfg:        cfg,
-		log:        log.With("bridge", cfg.BridgeName),
-		metrics:    m,
-		dispatcher: disp,
+		cfg:          cfg,
+		log:          log.With("bridge", cfg.BridgeName),
+		metrics:      m,
+		dispatcher:   disp,
+		zbStatus3Chs: make(map[string]chan ZbStatus3ValveResult),
 	}
 
 	opts := pahomqtt.NewClientOptions()
@@ -150,13 +154,32 @@ func (bc *BridgeClient) handleResult(_ pahomqtt.Client, msg pahomqtt.Message) {
 	bridge := BridgeNameFromTopic(msg.Topic())
 	bc.metrics.MQTTMessagesReceived.WithLabelValues(bridge).Inc()
 
-	ev, err := ParseResultPayload(bridge, msg.Payload())
+	payload := msg.Payload()
+
+	ev, err := ParseResultPayload(bridge, payload)
 	if err != nil {
 		bc.log.Debug("failed to parse result payload", "err", err)
 		return
 	}
 	if ev.ZbSendDone {
 		bc.log.Debug("ZbSend acknowledged by bridge")
+	}
+
+	// Route ZbStatus3 responses to any registered waiters.
+	results, _ := ParseZbStatus3ValvePower(payload)
+	if len(results) > 0 {
+		bc.zbStatus3Mu.Lock()
+		for _, r := range results {
+			if ch, ok := bc.zbStatus3Chs[r.DeviceName]; ok {
+				select {
+				case ch <- r:
+				default:
+				}
+			} else {
+				bc.log.Debug("no ZbStatus3 waiter", "device", r.DeviceName)
+			}
+		}
+		bc.zbStatus3Mu.Unlock()
 	}
 }
 
@@ -174,6 +197,40 @@ func (bc *BridgeClient) SendZbSend(ctx context.Context, deviceName string, power
 		return token.Error()
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+}
+
+// SendZbStatus3 queries the device state via cmnd/<bridge>/ZbStatus3 and waits for the response.
+func (bc *BridgeClient) SendZbStatus3(ctx context.Context, deviceName string, timeout time.Duration) (ZbStatus3ValveResult, error) {
+	ch := make(chan ZbStatus3ValveResult, 1)
+	bc.zbStatus3Mu.Lock()
+	bc.zbStatus3Chs[deviceName] = ch
+	bc.zbStatus3Mu.Unlock()
+	defer func() {
+		bc.zbStatus3Mu.Lock()
+		delete(bc.zbStatus3Chs, deviceName)
+		bc.zbStatus3Mu.Unlock()
+	}()
+
+	topic := fmt.Sprintf("cmnd/%s/ZbStatus3", bc.cfg.BridgeName)
+	bc.log.Debug("publishing ZbStatus3", "topic", topic, "device", deviceName)
+	token := bc.client.Publish(topic, 1, false, deviceName)
+	select {
+	case <-token.Done():
+		if token.Error() != nil {
+			return ZbStatus3ValveResult{}, fmt.Errorf("publish ZbStatus3: %w", token.Error())
+		}
+	case <-ctx.Done():
+		return ZbStatus3ValveResult{}, ctx.Err()
+	}
+
+	select {
+	case result := <-ch:
+		return result, nil
+	case <-time.After(timeout):
+		return ZbStatus3ValveResult{}, fmt.Errorf("ZbStatus3 response timeout for %q after %s", deviceName, timeout)
+	case <-ctx.Done():
+		return ZbStatus3ValveResult{}, ctx.Err()
 	}
 }
 

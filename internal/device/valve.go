@@ -18,6 +18,7 @@ type ValveConfig struct {
 	CommandTimeout     time.Duration
 	KeepClosedInterval time.Duration
 	MaxOpenDuration    time.Duration // 0 = no limit
+	CloseRepeatCount   int           // times to send each close command
 }
 
 // ValveInfo is the fully-resolved runtime representation of a managed valve,
