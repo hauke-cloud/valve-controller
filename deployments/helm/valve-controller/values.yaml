@@ -71,14 +71,14 @@ resources:
 
 livenessProbe:
   httpGet:
-    path: /api/v1/healthz
+    path: /healthz
     port: probe
   initialDelaySeconds: 5
   periodSeconds: 15
 
 readinessProbe:
   httpGet:
-    path: /api/v1/readyz
+    path: /readyz
     port: probe
   initialDelaySeconds: 5
   periodSeconds: 15
