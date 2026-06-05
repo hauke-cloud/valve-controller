@@ -19,6 +19,7 @@ import (
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	iotdevv1alpha1 "github.com/hauke-cloud/mqtt-device-controller/api/v1alpha1"
 	iotv1alpha1 "github.com/hauke-cloud/iot/valve-controller/api/v1alpha1"
 	restapi "github.com/hauke-cloud/iot/valve-controller/internal/api"
 	"github.com/hauke-cloud/iot/valve-controller/internal/k8s"
@@ -31,6 +32,7 @@ var scheme = runtime.NewScheme()
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(iotdevv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(iotv1alpha1.AddToScheme(scheme))
 }
 

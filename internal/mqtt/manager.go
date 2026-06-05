@@ -47,7 +47,8 @@ func (mgr *Manager) Upsert(ctx context.Context, cfg BridgeConfig) error {
 
 	if ok {
 		if existing.cfg.Host == cfg.Host && existing.cfg.Port == cfg.Port &&
-			existing.cfg.Username == cfg.Username {
+			existing.cfg.Username == cfg.Username &&
+			topicsEqual(existing.cfg.Topics, cfg.Topics) {
 			return nil
 		}
 		existing.Disconnect()
@@ -101,6 +102,18 @@ func (mgr *Manager) ConnectionStates() map[string]bool {
 		out[name] = bc.IsConnected()
 	}
 	return out
+}
+
+func topicsEqual(a, b []TopicEntry) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // StopAll disconnects all bridges gracefully.

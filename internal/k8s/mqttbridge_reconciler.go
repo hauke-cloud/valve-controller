@@ -44,11 +44,21 @@ func (r *MQTTBridgeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		port = 1883
 	}
 
+	topics := make([]mqttclient.TopicEntry, 0, len(bridge.Spec.Topics))
+	for _, t := range bridge.Spec.Topics {
+		topics = append(topics, mqttclient.TopicEntry{
+			Topic: t.Topic,
+			Type:  string(t.Type),
+			QoS:   byte(t.QoS),
+		})
+	}
+
 	cfg := mqttclient.BridgeConfig{
 		BridgeName:          bridge.Spec.BridgeName,
 		Host:                bridge.Spec.Host,
 		Port:                port,
 		MaxReconnectBackoff: bridge.Spec.MaxReconnectBackoffSeconds,
+		Topics:              topics,
 	}
 
 	if ref := bridge.Spec.CredentialsSecretRef; ref != nil {

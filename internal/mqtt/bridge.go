@@ -12,6 +12,14 @@ import (
 	"github.com/hauke-cloud/iot/valve-controller/internal/metrics"
 )
 
+// TopicEntry is a single MQTT subscription derived from MQTTBridgeSpec.Topics.
+// Type must be "telemetry" or "result"; other values are silently skipped.
+type TopicEntry struct {
+	Topic string
+	Type  string // "telemetry" | "result"
+	QoS   byte
+}
+
 // BridgeConfig holds all parameters needed to connect to one Tasmota MQTT bridge.
 type BridgeConfig struct {
 	// BridgeName is the Tasmota bridge topic prefix (e.g. "tasmota_office").
@@ -24,6 +32,8 @@ type BridgeConfig struct {
 	Hostname string
 	// MaxReconnectBackoff in seconds, 0 → use 60s default.
 	MaxReconnectBackoff int32
+	// Topics to subscribe to. When empty the default Tasmota patterns are used.
+	Topics []TopicEntry
 }
 
 // BridgeClient manages a single MQTT connection for one Tasmota bridge.
@@ -104,11 +114,22 @@ func (bc *BridgeClient) onConnectionLost(_ pahomqtt.Client, err error) {
 }
 
 func (bc *BridgeClient) resubscribe(c pahomqtt.Client) {
-	sensorTopic := fmt.Sprintf("tele/%s/SENSOR", bc.cfg.BridgeName)
-	resultTopic := fmt.Sprintf("stat/%s/RESULT", bc.cfg.BridgeName)
-
-	c.Subscribe(sensorTopic, 1, bc.handleSensor)
-	c.Subscribe(resultTopic, 0, bc.handleResult)
+	if len(bc.cfg.Topics) == 0 {
+		// Fall back to the default Tasmota topic layout.
+		c.Subscribe(fmt.Sprintf("tele/%s/SENSOR", bc.cfg.BridgeName), 1, bc.handleSensor)
+		c.Subscribe(fmt.Sprintf("stat/%s/RESULT", bc.cfg.BridgeName), 0, bc.handleResult)
+		return
+	}
+	for _, t := range bc.cfg.Topics {
+		switch t.Type {
+		case "telemetry":
+			c.Subscribe(t.Topic, t.QoS, bc.handleSensor)
+		case "result":
+			c.Subscribe(t.Topic, t.QoS, bc.handleResult)
+		default:
+			bc.log.Debug("ignoring topic with unhandled type", "topic", t.Topic, "type", t.Type)
+		}
+	}
 }
 
 func (bc *BridgeClient) handleSensor(_ pahomqtt.Client, msg pahomqtt.Message) {
