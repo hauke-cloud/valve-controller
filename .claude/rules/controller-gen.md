@@ -2,6 +2,22 @@
 
 ## Makefile targets
 
+### Always delete zz_generated.deepcopy.go before regenerating
+
+The `generate` target **must** delete `zz_generated.deepcopy.go` before running controller-gen:
+
+```makefile
+generate:
+    rm -f api/v1alpha1/zz_generated.deepcopy.go
+    $(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
+```
+
+**Why:** controller-gen v0.17 inspects the existing file. When it finds `DeepCopyInto` methods
+already defined (from a previous generate or a hand-written bootstrap), it skips regenerating
+them. It then overwrites the file — losing those implementations while keeping all the calls
+to them. The result is `"type X has no field or method DeepCopyInto"` at every call site.
+Deleting the file forces a clean generation where every required method is emitted fresh.
+
 ### generate vs manifests
 
 `make generate` and `make manifests` must be separate invocations of controller-gen:

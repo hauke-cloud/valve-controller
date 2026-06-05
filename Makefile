@@ -8,6 +8,7 @@ tidy:
 	go mod download
 
 generate:
+	rm -f api/v1alpha1/zz_generated.deepcopy.go
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
 manifests:
