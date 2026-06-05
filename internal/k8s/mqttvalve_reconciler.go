@@ -111,7 +111,7 @@ func (r *MQTTValveReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Warn("failed to patch Ready condition", "err", err)
 	}
 
-	log.Info("valve reconciled", "device", dev.Spec.FriendlyName, "bridge", bridge.Spec.BridgeName)
+	log.Debug("valve reconciled", "device", dev.Spec.FriendlyName, "bridge", bridge.Spec.BridgeName)
 	return ctrl.Result{}, nil
 }
 

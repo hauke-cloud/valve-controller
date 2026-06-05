@@ -76,7 +76,7 @@ func (r *MQTTBridgeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, fmt.Errorf("upsert bridge: %w", err)
 	}
 
-	log.Info("bridge reconciled", "host", bridge.Spec.Host, "port", port)
+	log.Debug("bridge reconciled", "host", bridge.Spec.Host, "port", port)
 	return ctrl.Result{}, nil
 }
 

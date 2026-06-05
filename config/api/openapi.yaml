@@ -1,0 +1,534 @@
+openapi: "3.0.3"
+info:
+  title: Valve Controller API
+  version: "0.1.0"
+  description: |
+    REST API for the valve-controller. All routes except `/api/v1/healthz` and
+    `/api/v1/readyz` require mutual TLS — the client must present a certificate
+    signed by the configured client CA.
+
+servers:
+  - url: https://{host}:{port}
+    variables:
+      host:
+        default: valve-controller.mqtt.svc.cluster.local
+      port:
+        default: "8443"
+
+security:
+  - mtls: []
+
+paths:
+  /api/v1/healthz:
+    get:
+      summary: Liveness probe
+      operationId: healthz
+      security: []
+      tags: [probe]
+      responses:
+        "200":
+          description: Controller process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusOK"
+
+  /api/v1/readyz:
+    get:
+      summary: Readiness probe
+      operationId: readyz
+      security: []
+      tags: [probe]
+      responses:
+        "200":
+          description: All MQTT bridges are connected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+        "503":
+          description: One or more MQTT bridges are disconnected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyResponse"
+
+  /api/v1/valves:
+    get:
+      summary: List all managed valves
+      operationId: listValves
+      tags: [valves]
+      responses:
+        "200":
+          description: Collection of all registered valves.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValveCollection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/valves/{name}:
+    parameters:
+      - $ref: "#/components/parameters/ValveName"
+      - $ref: "#/components/parameters/NamespaceQuery"
+      - $ref: "#/components/parameters/NamespaceHeader"
+
+    get:
+      summary: Get a single valve
+      operationId: getValve
+      tags: [valves]
+      responses:
+        "200":
+          description: Valve detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Valve"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/valves/{name}/open:
+    parameters:
+      - $ref: "#/components/parameters/ValveName"
+      - $ref: "#/components/parameters/NamespaceQuery"
+      - $ref: "#/components/parameters/NamespaceHeader"
+      - name: duration
+        in: query
+        required: false
+        description: |
+          How long to hold the valve open before automatically closing it.
+          Accepts Go duration strings such as `15m`, `1h30m`, `90s`.
+          Omit for an indefinite open (subject to `maxOpenDurationSeconds` on the CRD).
+        schema:
+          type: string
+          example: "15m"
+
+    put:
+      summary: Open a valve
+      operationId: openValve
+      tags: [valves]
+      responses:
+        "202":
+          description: Open action accepted and enqueued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Action"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/valves/{name}/close:
+    parameters:
+      - $ref: "#/components/parameters/ValveName"
+      - $ref: "#/components/parameters/NamespaceQuery"
+      - $ref: "#/components/parameters/NamespaceHeader"
+
+    put:
+      summary: Close a valve
+      operationId: closeValve
+      tags: [valves]
+      responses:
+        "202":
+          description: Close action accepted and enqueued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Action"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/valves/{name}/actions:
+    parameters:
+      - $ref: "#/components/parameters/ValveName"
+      - $ref: "#/components/parameters/NamespaceQuery"
+      - $ref: "#/components/parameters/NamespaceHeader"
+
+    get:
+      summary: List action history for a valve
+      operationId: listActions
+      tags: [actions]
+      description: |
+        Returns the current in-progress action (if any) followed by the completed
+        action history, newest first. Keep-closed safety pings are excluded.
+      responses:
+        "200":
+          description: Collection of actions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionCollection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/valves/{name}/actions/{actionID}:
+    parameters:
+      - $ref: "#/components/parameters/ValveName"
+      - $ref: "#/components/parameters/NamespaceQuery"
+      - $ref: "#/components/parameters/NamespaceHeader"
+      - name: actionID
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "a1b2c3d4e5f6a7b8"
+
+    get:
+      summary: Get a specific action
+      operationId: getAction
+      tags: [actions]
+      responses:
+        "200":
+          description: Action detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Action"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    mtls:
+      type: mutualTLS
+      description: Client certificate signed by the configured client CA.
+
+  parameters:
+    ValveName:
+      name: name
+      in: path
+      required: true
+      description: |
+        Valve name. Must match `metadata.name` of the `MQTTValve` CR.
+        Use `namespace/name` format to disambiguate when the same name exists
+        in multiple namespaces, or supply the `namespace` query parameter /
+        `X-Namespace` header instead.
+      schema:
+        type: string
+        example: "valve-right"
+
+    NamespaceQuery:
+      name: namespace
+      in: query
+      required: false
+      description: Kubernetes namespace. Disambiguates valves with the same name across namespaces.
+      schema:
+        type: string
+        example: "iot"
+
+    NamespaceHeader:
+      name: X-Namespace
+      in: header
+      required: false
+      description: Alternative to the `namespace` query parameter.
+      schema:
+        type: string
+        example: "iot"
+
+  schemas:
+    Valve:
+      type: object
+      required:
+        - name
+        - namespace
+        - state
+        - disabled
+        - friendlyName
+        - bridgeName
+        - linkQuality
+        - batteryPercentage
+        - reachable
+        - dailyIrrigationVolume
+        - lastValveOpenDurationMs
+      properties:
+        name:
+          type: string
+          description: Kubernetes resource name (`metadata.name`).
+          example: "valve-right"
+        namespace:
+          type: string
+          description: Kubernetes namespace.
+          example: "iot"
+        state:
+          type: string
+          enum: [open, closed, unknown]
+          description: Last confirmed physical state of the valve.
+          example: "closed"
+        disabled:
+          type: boolean
+          description: When true the valve will not accept open commands.
+          example: false
+        friendlyName:
+          type: string
+          description: Tasmota device friendly name used in ZbSend commands.
+          example: "valve-right"
+        bridgeName:
+          type: string
+          description: MQTT bridge topic prefix (Tasmota bridge name).
+          example: "tasmota_office"
+        linkQuality:
+          type: integer
+          format: int32
+          description: Zigbee link quality (0–255) from the last device report.
+          example: 120
+        batteryPercentage:
+          type: integer
+          format: int32
+          description: Battery percentage from the last device report.
+          example: 85
+        reachable:
+          type: boolean
+          description: Whether the device was reachable at its last poll.
+          example: true
+        dailyIrrigationVolume:
+          type: number
+          format: double
+          description: Cumulative irrigation volume for today as reported by the device.
+          example: 12.5
+        lastValveOpenDurationMs:
+          type: integer
+          format: int64
+          description: Duration of the last open cycle in milliseconds as reported by the device.
+          example: 900000
+        lastOpenTime:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp of the last confirmed open (UTC).
+          example: "2024-06-01T06:00:00.000Z"
+        lastCloseTime:
+          type: string
+          format: date-time
+          description: RFC 3339 timestamp of the last confirmed close (UTC).
+          example: "2024-06-01T06:15:00.000Z"
+        currentAction:
+          $ref: "#/components/schemas/Action"
+          description: The in-progress action, if any.
+
+    ValveCollection:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Valve"
+        total:
+          type: integer
+          example: 3
+        limit:
+          type: integer
+          example: 3
+        offset:
+          type: integer
+          example: 0
+
+    Action:
+      type: object
+      required:
+        - id
+        - valve
+        - type
+        - state
+        - requestedAt
+        - attempts
+      properties:
+        id:
+          type: string
+          description: Unique hex action identifier.
+          example: "a1b2c3d4e5f6a7b8"
+        valve:
+          type: string
+          description: Name of the valve this action targets.
+          example: "valve-right"
+        type:
+          type: string
+          enum: [open, open_timed, close]
+          description: |
+            `open` — indefinite open (bounded by `maxOpenDurationSeconds`).
+            `open_timed` — open for a fixed duration.
+            `close` — close the valve.
+          example: "open_timed"
+        state:
+          type: string
+          enum:
+            - pending
+            - sending
+            - waiting_confirmation
+            - fulfilled
+            - closing
+            - failed
+            - cancelled
+          description: |
+            Current lifecycle state of the action.
+            `closing` means a timed open has expired and the close command is being sent.
+          example: "fulfilled"
+        duration:
+          type: string
+          description: Open duration for `open_timed` actions (Go duration string).
+          example: "15m0s"
+        requestedAt:
+          type: string
+          format: date-time
+          description: RFC 3339Nano timestamp when the action was enqueued (UTC).
+          example: "2024-06-01T06:00:00.000000000Z"
+        fulfilledAt:
+          type: string
+          format: date-time
+          description: Timestamp when the device confirmed the command.
+          example: "2024-06-01T06:00:02.123456789Z"
+        closedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the valve was closed at end of a timed open.
+          example: "2024-06-01T06:15:02.123456789Z"
+        expiresAt:
+          type: string
+          format: date-time
+          description: Timestamp when a timed open will (or did) expire.
+          example: "2024-06-01T06:15:00.000000000Z"
+        failedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the action was marked failed.
+        attempts:
+          type: integer
+          description: Number of send attempts made.
+          example: 1
+        error:
+          type: string
+          description: Error message if the action failed.
+          example: "no device confirmation after 3 attempts"
+
+    ActionCollection:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Action"
+        total:
+          type: integer
+          example: 10
+        limit:
+          type: integer
+          example: 10
+        offset:
+          type: integer
+          example: 0
+
+    StatusOK:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: "ok"
+
+    ReadyResponse:
+      type: object
+      required: [status, mqtt]
+      properties:
+        status:
+          type: string
+          enum: [ok, "not ready"]
+          example: "ok"
+        mqtt:
+          type: object
+          description: Per-bridge connection state.
+          additionalProperties:
+            type: boolean
+          example:
+            tasmota_office: true
+            tasmota_garden: true
+
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+          example: "valve not found: valve-right"
+        code:
+          type: string
+          enum:
+            - VALVE_NOT_FOUND
+            - VALVE_DISABLED
+            - INVALID_INPUT
+            - UNAUTHORIZED
+            - INTERNAL_ERROR
+          example: "VALVE_NOT_FOUND"
+
+  responses:
+    Unauthorized:
+      description: Client certificate missing or not signed by the trusted CA.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "client certificate required"
+            code: "UNAUTHORIZED"
+
+    NotFound:
+      description: Valve or action not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "valve not found: valve-right"
+            code: "VALVE_NOT_FOUND"
+
+    UnprocessableEntity:
+      description: Request is syntactically valid but semantically rejected (disabled valve, bad duration).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "valve is disabled"
+            code: "VALVE_DISABLED"
+
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: "internal error"
+            code: "INTERNAL_ERROR"
+
+tags:
+  - name: valves
+    description: Valve state and control.
+  - name: actions
+    description: Action history and status.
+  - name: probe
+    description: Liveness and readiness probes (no auth required).
