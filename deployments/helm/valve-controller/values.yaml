@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/hauke-cloud/iot/valve-controller
+  repository: ghcr.io/hauke-cloud/valve-controller
   pullPolicy: IfNotPresent
-  tag: ""  # defaults to .Chart.AppVersion
+  tag: "" # defaults to .Chart.AppVersion
 
 nameOverride: ""
 fullnameOverride: ""
@@ -92,14 +92,14 @@ affinity: {}
 prometheus:
   serviceMonitor:
     enabled: true
-    namespace: ""  # defaults to Release.Namespace
+    namespace: "" # defaults to Release.Namespace
     interval: 30s
     scrapeTimeout: 10s
     labels: {}
 
   rules:
     enabled: true
-    namespace: ""  # defaults to Release.Namespace
+    namespace: "" # defaults to Release.Namespace
     labels: {}
     # Additional alert rule severity label
     additionalLabels: {}
