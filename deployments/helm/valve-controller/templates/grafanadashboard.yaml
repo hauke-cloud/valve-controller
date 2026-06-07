@@ -1,0 +1,312 @@
+{{- if .Values.grafanaDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "valve-controller.fullname" . }}-dashboard
+  namespace: {{ .Values.grafanaDashboard.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "valve-controller.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+    {{- with .Values.grafanaDashboard.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.grafanaDashboard.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  valve-controller.json: |-
+    {
+      "title": "Valve Controller",
+      "uid": "valve-controller",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-3h", "to": "now"},
+      "tags": ["iot", "irrigation", "valve"],
+      "templating": {
+        "list": [
+          {
+            "current": {},
+            "hide": 0,
+            "includeAll": false,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "type": "datasource"
+          },
+          {
+            "current": {},
+            "datasource": {"type": "prometheus", "uid": "${datasource}"},
+            "definition": "label_values(valve_controller_valve_state, namespace)",
+            "hide": 0,
+            "includeAll": false,
+            "multi": false,
+            "name": "namespace",
+            "query": {"query": "label_values(valve_controller_valve_state, namespace)", "refId": "StandardVariableQuery"},
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Valve States",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "textMode": "value_and_name"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {"text": "Closed", "color": "blue", "index": 0},
+                    "1": {"text": "Open", "color": "green", "index": 1}
+                  }
+                }
+              ],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}, {"color": "green", "value": 1}]},
+              "color": {"mode": "thresholds"}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "valve_controller_valve_state{namespace=\"$namespace\"}",
+              "legendFormat": "{{`{{name}}`}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "MQTT Bridge Connection",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 12, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "textMode": "value_and_name"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {"text": "Disconnected", "color": "red", "index": 0},
+                    "1": {"text": "Connected", "color": "green", "index": 1}
+                  }
+                }
+              ],
+              "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]},
+              "color": {"mode": "thresholds"}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "valve_controller_mqtt_connection_state",
+              "legendFormat": "{{`{{bridge}}`}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Valve Battery Level",
+          "type": "gauge",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 4},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "orange", "value": 20},
+                  {"color": "yellow", "value": 40},
+                  {"color": "green", "value": 60}
+                ]
+              },
+              "color": {"mode": "thresholds"}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "valve_controller_battery_percentage{namespace=\"$namespace\"}",
+              "legendFormat": "{{`{{name}}`}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Actions Rate (Fulfilled vs Failed)",
+          "type": "timeseries",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 4},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "sum"]},
+            "tooltip": {"mode": "multi"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {"fillOpacity": 5, "spanNulls": true}
+            },
+            "overrides": [
+              {
+                "matcher": {"id": "byFrameRefID", "options": "B"},
+                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "rate(valve_controller_actions_total{namespace=\"$namespace\", result=\"fulfilled\"}[5m])",
+              "legendFormat": "{{`{{name}}`}} / {{`{{type}}`}} fulfilled",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "rate(valve_controller_actions_total{namespace=\"$namespace\", result=\"failed\"}[5m])",
+              "legendFormat": "{{`{{name}}`}} / {{`{{type}}`}} failed",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Action Duration (P99)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "max"]},
+            "tooltip": {"mode": "multi"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {"fillOpacity": 5, "spanNulls": true}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "histogram_quantile(0.99, sum by (name, namespace, type, le) (rate(valve_controller_action_duration_seconds_bucket{namespace=\"$namespace\"}[5m])))",
+              "legendFormat": "{{`{{name}}`}} / {{`{{type}}`}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Safety Closes",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "sum"]},
+            "tooltip": {"mode": "multi"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"fillOpacity": 5, "spanNulls": true},
+              "color": {"fixedColor": "orange", "mode": "fixed"}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "increase(valve_controller_safety_closes_total{namespace=\"$namespace\"}[1h])",
+              "legendFormat": "{{`{{name}}`}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Action Retries",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "sum"]},
+            "tooltip": {"mode": "multi"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {"fillOpacity": 5, "spanNulls": true}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "rate(valve_controller_action_retries_total{namespace=\"$namespace\"}[5m])",
+              "legendFormat": "{{`{{name}}`}} / {{`{{type}}`}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "MQTT Messages Received Rate",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "options": {
+            "legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean"]},
+            "tooltip": {"mode": "multi"}
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {"fillOpacity": 5, "spanNulls": true}
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {"type": "prometheus", "uid": "${datasource}"},
+              "expr": "rate(valve_controller_mqtt_messages_received_total[5m])",
+              "legendFormat": "{{`{{bridge}}`}}",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
+{{- end }}

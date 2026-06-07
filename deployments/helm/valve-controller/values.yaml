@@ -108,3 +108,18 @@ prometheus:
 # Install the MQTTValve CRD via the chart.
 # Disable if you manage CRDs separately.
 installCRD: true
+
+# ─── Grafana Dashboard (ConfigMap) ───────────────────────────────────────────
+# Creates a ConfigMap with the Grafana dashboard JSON, labelled grafana_dashboard=1
+# so the Grafana sidecar picks it up automatically.
+grafanaDashboard:
+  enabled: false
+
+  # Namespace to deploy the ConfigMap into.
+  # Defaults to the release namespace.
+  namespace: ""
+
+  # Extra labels added to the ConfigMap metadata.
+  additionalLabels: {}
+
+  annotations: {}
