@@ -1,12 +1,12 @@
-{{- if .Values.prometheus.rules.enabled }}
+{{- if .Values.prometheusRules.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: {{ include "valve-controller.fullname" . }}
-  namespace: {{ .Values.prometheus.rules.namespace | default .Release.Namespace }}
+  namespace: {{ .Values.prometheusRules.namespace | default .Release.Namespace }}
   labels:
     {{- include "valve-controller.labels" . | nindent 4 }}
-    {{- with .Values.prometheus.rules.labels }}
+    {{- with .Values.prometheusRules.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
@@ -30,7 +30,7 @@ spec:
           for: 10m
           labels:
             severity: critical
-            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- with .Values.prometheusRules.additionalLabels }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           annotations:
@@ -45,7 +45,7 @@ spec:
           for: 1m
           labels:
             severity: warning
-            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- with .Values.prometheusRules.additionalLabels }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           annotations:
@@ -59,7 +59,7 @@ spec:
           for: 2m
           labels:
             severity: critical
-            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- with .Values.prometheusRules.additionalLabels }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           annotations:
@@ -73,7 +73,7 @@ spec:
           for: 5m
           labels:
             severity: warning
-            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- with .Values.prometheusRules.additionalLabels }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           annotations:
@@ -92,7 +92,7 @@ spec:
           for: 10m
           labels:
             severity: warning
-            {{- with .Values.prometheus.rules.additionalLabels }}
+            {{- with .Values.prometheusRules.additionalLabels }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           annotations:
