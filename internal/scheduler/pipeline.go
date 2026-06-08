@@ -339,16 +339,16 @@ func (p *pipeline) applyDeviceState(open bool) {
 
 func (p *pipeline) keepClosedPing(ctx context.Context) {
 	p.mu.RLock()
-	state := p.info.State
 	current := p.current
 	name := p.info.Name
 	ns := p.info.Namespace
 	p.mu.RUnlock()
 
+	// Suppress only while an action is actively in-flight (covers the
+	// ActionStateClosing wait phase of a timed open, where the valve must
+	// stay open until the timer fires).  A completed open — no current
+	// action but state==open — still gets the ping; that is the point.
 	if current != nil && !current.IsTerminal() {
-		return
-	}
-	if state == device.ValveStateOpen {
 		return
 	}
 
