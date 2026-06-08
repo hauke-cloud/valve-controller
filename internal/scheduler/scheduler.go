@@ -58,6 +58,17 @@ func (s *Scheduler) RegisterValve(ctx context.Context, info device.ValveInfo) {
 	p := newPipeline(info, s.mqttMgr, s.writer, s.metrics, s.log)
 	s.pipelines[key] = p
 	s.cancels[key] = cancel
+
+	// Seed the gauge from the CRD-persisted state so the metric is always
+	// present even before the first command confirmation (e.g. open valves
+	// whose keepClosedPing is intentionally suppressed).
+	stateVal := map[device.ValveState]float64{
+		device.ValveStateOpen:    1,
+		device.ValveStateClosed:  0,
+		device.ValveStateUnknown: -1,
+	}[info.State]
+	s.metrics.ValveState.WithLabelValues(info.Name, info.Namespace).Set(stateVal)
+
 	go p.run(pipeCtx)
 
 	s.log.Info("valve pipeline started", "valve", key)
