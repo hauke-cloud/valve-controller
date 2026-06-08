@@ -84,7 +84,7 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "valve_controller_valve_state{namespace=\"$namespace\"}",
+              "expr": "max by (namespace, name) (valve_controller_valve_state{namespace=\"$namespace\"})",
               "legendFormat": "{{`{{name}}`}}",
               "refId": "A"
             }
@@ -121,7 +121,7 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "valve_controller_mqtt_connection_state",
+              "expr": "max by (namespace, bridge) (valve_controller_mqtt_connection_state)",
               "legendFormat": "{{`{{bridge}}`}}",
               "refId": "A"
             }
@@ -159,7 +159,7 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "valve_controller_battery_percentage{namespace=\"$namespace\"}",
+              "expr": "max by (namespace, name) (valve_controller_battery_percentage{namespace=\"$namespace\"})",
               "legendFormat": "{{`{{name}}`}}",
               "refId": "A"
             }
@@ -190,13 +190,13 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "rate(valve_controller_actions_total{namespace=\"$namespace\", result=\"fulfilled\"}[5m])",
+              "expr": "max by (namespace, name, type, result) (rate(valve_controller_actions_total{namespace=\"$namespace\", result=\"fulfilled\"}[5m]))",
               "legendFormat": "{{`{{name}}`}} / {{`{{type}}`}} fulfilled",
               "refId": "A"
             },
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "rate(valve_controller_actions_total{namespace=\"$namespace\", result=\"failed\"}[5m])",
+              "expr": "max by (namespace, name, type, result) (rate(valve_controller_actions_total{namespace=\"$namespace\", result=\"failed\"}[5m]))",
               "legendFormat": "{{`{{name}}`}} / {{`{{type}}`}} failed",
               "refId": "B"
             }
@@ -249,7 +249,7 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "increase(valve_controller_safety_closes_total{namespace=\"$namespace\"}[1h])",
+              "expr": "max by (namespace, name) (increase(valve_controller_safety_closes_total{namespace=\"$namespace\"}[1h]))",
               "legendFormat": "{{`{{name}}`}}",
               "refId": "A"
             }
@@ -275,7 +275,7 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "rate(valve_controller_action_retries_total{namespace=\"$namespace\"}[5m])",
+              "expr": "max by (namespace, name, type) (rate(valve_controller_action_retries_total{namespace=\"$namespace\"}[5m]))",
               "legendFormat": "{{`{{name}}`}} / {{`{{type}}`}}",
               "refId": "A"
             }
@@ -301,7 +301,7 @@ data:
           "targets": [
             {
               "datasource": {"type": "prometheus", "uid": "${datasource}"},
-              "expr": "rate(valve_controller_mqtt_messages_received_total[5m])",
+              "expr": "max by (namespace, bridge) (rate(valve_controller_mqtt_messages_received_total[5m]))",
               "legendFormat": "{{`{{bridge}}`}}",
               "refId": "A"
             }
