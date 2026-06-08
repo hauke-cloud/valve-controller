@@ -25,9 +25,9 @@ type MQTTValveSpec struct {
 	Disabled bool `json:"disabled,omitempty"`
 
 	// RetryCount is the number of send attempts before an action is marked failed.
+	// Set to a large value (e.g. 2147483647) for effectively unlimited retries.
 	// +kubebuilder:default=3
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=10
 	RetryCount int32 `json:"retryCount,omitempty"`
 
 	// CommandTimeoutSeconds is the per-attempt timeout waiting for device confirmation.

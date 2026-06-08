@@ -67,9 +67,8 @@ spec:
                 type: integer
               retryCount:
                 default: 3
-                description: RetryCount is the number of send attempts before an action is marked failed.
+                description: RetryCount is the number of send attempts before an action is marked failed. Set to a large value (e.g. 2147483647) for effectively unlimited retries.
                 format: int32
-                maximum: 10
                 minimum: 1
                 type: integer
             type: object
