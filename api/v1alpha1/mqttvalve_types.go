@@ -69,7 +69,6 @@ const (
 
 type MQTTValveStatus struct {
 	// ValveState is the last confirmed physical state from the device.
-	// +kubebuilder:validation:Enum=open;closed;unknown
 	ValveState ValveState `json:"valveState,omitempty"`
 
 	// LastOpenTime is when the valve was last confirmed open.

@@ -38,16 +38,38 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
             properties:
+              closeRepeatCount:
+                default: 3
+                description: |-
+                  CloseRepeatCount is the number of times the close command is sent per attempt.
+                  Sending the command multiple times improves reliability for valves that sometimes
+                  ignore a single close signal, especially after short open durations.
+                format: int32
+                maximum: 10
+                minimum: 1
+                type: integer
               commandTimeoutSeconds:
                 default: 30
-                description: Per-attempt timeout in seconds waiting for device confirmation.
+                description: CommandTimeoutSeconds is the per-attempt timeout waiting
+                  for device confirmation.
                 format: int32
                 maximum: 300
                 minimum: 5
@@ -58,52 +80,77 @@ spec:
                 type: boolean
               keepClosedIntervalSeconds:
                 default: 300
-                description: How often the controller re-sends the close command as a safety net.
+                description: KeepClosedIntervalSeconds controls how often the controller
+                  re-sends the close command as a safety net.
                 format: int32
                 maximum: 3600
-                minimum: 60
+                minimum: 1
                 type: integer
               maxOpenDurationSeconds:
                 default: 3600
-                description: Hard safety limit on open duration. 0 disables the limit.
+                description: |-
+                  MaxOpenDurationSeconds is a hard safety limit on how long the valve may remain open.
+                  0 disables the limit (not recommended for garden irrigation).
                 format: int32
                 minimum: 0
                 type: integer
               retryCount:
                 default: 3
-                description: Number of send attempts before an action is marked failed.
+                description: |-
+                  RetryCount is the number of send attempts before an action is marked failed.
+                  Set to a large value (e.g. 2147483647) for effectively unlimited retries.
                 format: int32
-                maximum: 10
                 minimum: 1
                 type: integer
             type: object
           status:
             properties:
               conditions:
+                description: Conditions holds the Ready and Reachable conditions.
                 items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
                   properties:
                     lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
                       format: date-time
                       type: string
                     message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
                       maxLength: 32768
                       type: string
                     observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
                       format: int64
                       minimum: 0
                       type: integer
                     reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
                       maxLength: 1024
                       minLength: 1
                       pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
                       type: string
                     status:
+                      description: status of the condition, one of True, False, Unknown.
                       enum:
                       - "True"
                       - "False"
                       - Unknown
                       type: string
                     type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
                       maxLength: 316
                       pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
                       type: string
@@ -116,19 +163,28 @@ spec:
                   type: object
                 type: array
               currentActionID:
+                description: CurrentActionID is the ID of the in-progress action;
+                  empty when idle.
                 type: string
               dailyIrrigationVolume:
+                description: DailyIrrigationVolume from the last device sensor report.
                 type: number
               lastCloseTime:
+                description: LastCloseTime is when the valve was last confirmed closed.
                 format: date-time
                 type: string
               lastOpenTime:
+                description: LastOpenTime is when the valve was last confirmed open.
                 format: date-time
                 type: string
               lastValveOpenDuration:
+                description: LastValveOpenDuration from the last device report, in
+                  milliseconds.
                 format: int64
                 type: integer
               valveState:
+                description: ValveState is the last confirmed physical state from
+                  the device.
                 enum:
                 - open
                 - closed

@@ -30,7 +30,8 @@ type ValveInfo struct {
 	Config    ValveConfig
 
 	// from MQTTDevice (discovered via typeRef → MQTTValve)
-	FriendlyName string // Tasmota friendly name used in ZbSend payloads
+	FriendlyName string // Tasmota friendly name — mutable, renamed by the device controller
+	ShortAddr    string // Zigbee short address — stable, preferred for addressing the device
 
 	// from MQTTBridge (resolved via MQTTDevice.bridgeRef)
 	BridgeName string // spec.bridgeName — used to compose MQTT topics
@@ -52,4 +53,16 @@ type ValveInfo struct {
 // Key returns the unique string identifier used in maps and log fields.
 func (v *ValveInfo) Key() string {
 	return v.Namespace + "/" + v.Name
+}
+
+// CommandTarget returns the identifier used to address the device on the
+// bridge. The short address is preferred because it survives friendly-name
+// renames; Tasmota accepts either form in ZbSend and ZbStatus3. Addressing by
+// friendly name means every command and every confirmation depends on a value
+// that another controller can change underneath us at any moment.
+func (v *ValveInfo) CommandTarget() string {
+	if v.ShortAddr != "" {
+		return v.ShortAddr
+	}
+	return v.FriendlyName
 }

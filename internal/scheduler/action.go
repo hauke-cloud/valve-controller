@@ -24,7 +24,7 @@ const (
 	ActionStateSending             ActionState = "sending"
 	ActionStateWaitingConfirmation ActionState = "waiting_confirmation"
 	ActionStateFulfilled           ActionState = "fulfilled"
-	ActionStateClosing             ActionState = "closing"   // timed open expired → sending close
+	ActionStateClosing             ActionState = "closing" // timed open expired → sending close
 	ActionStateFailed              ActionState = "failed"
 	ActionStateCancelled           ActionState = "cancelled"
 )
@@ -72,6 +72,13 @@ func (a *Action) IsTerminal() bool {
 		return true
 	}
 	return false
+}
+
+// HoldsValveOpen reports whether this action deliberately keeps the valve open
+// while it runs, and so must not be overridden by the keep-closed safety ping.
+// A close or keep-close that is merely still retrying does not qualify.
+func (a *Action) HoldsValveOpen() bool {
+	return a.Type == ActionTypeOpen || a.Type == ActionTypeOpenTimed
 }
 
 // IsInternalSafetyPing reports whether this is an auto-generated keep-closed action.

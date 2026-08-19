@@ -47,7 +47,7 @@ type BridgeClient struct {
 	connected  bool
 
 	zbStatus3Mu  sync.Mutex
-	zbStatus3Chs map[string]chan ZbStatus3ValveResult // keyed by device friendly name
+	zbStatus3Chs map[string]chan ZbStatus3ValveResult // keyed by whatever identifier the query used
 }
 
 func newBridgeClient(cfg BridgeConfig, disp *Dispatcher, m *metrics.Metrics, log *slog.Logger) *BridgeClient {
@@ -165,18 +165,31 @@ func (bc *BridgeClient) handleResult(_ pahomqtt.Client, msg pahomqtt.Message) {
 		bc.log.Debug("ZbSend acknowledged by bridge")
 	}
 
-	// Route ZbStatus3 responses to any registered waiters.
+	// Route ZbStatus3 responses to any registered waiters. A waiter is keyed by
+	// the identifier its query used, which may be the short address, while
+	// Tasmota answers with the friendly name in "Name" — so match on either.
 	results, _ := ParseZbStatus3ValvePower(payload)
 	if len(results) > 0 {
 		bc.zbStatus3Mu.Lock()
 		for _, r := range results {
-			if ch, ok := bc.zbStatus3Chs[r.DeviceName]; ok {
+			delivered := false
+			for _, key := range [...]string{r.DeviceName, r.ShortAddr} {
+				if key == "" {
+					continue
+				}
+				ch, ok := bc.zbStatus3Chs[dispatchKey(key)]
+				if !ok {
+					continue
+				}
 				select {
 				case ch <- r:
 				default:
 				}
-			} else {
-				bc.log.Debug("no ZbStatus3 waiter", "device", r.DeviceName)
+				delivered = true
+				break
+			}
+			if !delivered {
+				bc.log.Debug("no ZbStatus3 waiter", "device", r.DeviceName, "shortAddr", r.ShortAddr)
 			}
 		}
 		bc.zbStatus3Mu.Unlock()
@@ -202,13 +215,14 @@ func (bc *BridgeClient) SendZbSend(ctx context.Context, deviceName string, power
 
 // SendZbStatus3 queries the device state via cmnd/<bridge>/ZbStatus3 and waits for the response.
 func (bc *BridgeClient) SendZbStatus3(ctx context.Context, deviceName string, timeout time.Duration) (ZbStatus3ValveResult, error) {
+	key := dispatchKey(deviceName)
 	ch := make(chan ZbStatus3ValveResult, 1)
 	bc.zbStatus3Mu.Lock()
-	bc.zbStatus3Chs[deviceName] = ch
+	bc.zbStatus3Chs[key] = ch
 	bc.zbStatus3Mu.Unlock()
 	defer func() {
 		bc.zbStatus3Mu.Lock()
-		delete(bc.zbStatus3Chs, deviceName)
+		delete(bc.zbStatus3Chs, key)
 		bc.zbStatus3Mu.Unlock()
 	}()
 
@@ -240,4 +254,3 @@ func (bc *BridgeClient) IsConnected() bool {
 	defer bc.mu.Unlock()
 	return bc.connected
 }
-

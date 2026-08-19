@@ -8,9 +8,14 @@ import (
 
 // SensorEvent carries a parsed tele/<bridge>/SENSOR ZbReceived entry.
 type SensorEvent struct {
-	BridgeName            string
-	DeviceName            string // friendly name or short address
-	Power                 *int   // nil if field absent
+	BridgeName string
+	// DeviceName is the Tasmota friendly name ("Name"). It changes whenever the
+	// device is renamed on the bridge, so it must not be the only way to
+	// identify a device.
+	DeviceName string
+	// ShortAddr is the Zigbee short address ("Device"), stable across renames.
+	ShortAddr             string
+	Power                 *int // nil if field absent
 	LinkQuality           *int
 	BatteryPercentage     *int
 	DailyIrrigationVolume *float64
@@ -46,6 +51,9 @@ func ParseSensorPayload(bridgeName string, payload []byte) ([]SensorEvent, error
 		ev := SensorEvent{BridgeName: bridgeName}
 		if v, ok := fields["Name"]; ok {
 			_ = json.Unmarshal(v, &ev.DeviceName)
+		}
+		if v, ok := fields["Device"]; ok {
+			_ = json.Unmarshal(v, &ev.ShortAddr)
 		}
 		if v, ok := fields["Power"]; ok {
 			var p int
@@ -83,7 +91,7 @@ func ParseSensorPayload(bridgeName string, payload []byte) ([]SensorEvent, error
 				ev.IrrigationEndTime = &t
 			}
 		}
-		if ev.DeviceName != "" {
+		if ev.DeviceName != "" || ev.ShortAddr != "" {
 			events = append(events, ev)
 		}
 	}
@@ -117,7 +125,8 @@ func BridgeNameFromTopic(topic string) string {
 
 // ZbStatus3ValveResult holds the Power state from one device entry in a ZbStatus3 response.
 type ZbStatus3ValveResult struct {
-	DeviceName string
+	DeviceName string // Tasmota friendly name ("Name")
+	ShortAddr  string // Zigbee short address ("Device")
 	Power      *int
 }
 
@@ -126,8 +135,9 @@ type ZbStatus3ValveResult struct {
 func ParseZbStatus3ValvePower(payload []byte) ([]ZbStatus3ValveResult, error) {
 	var wrapper struct {
 		ZbStatus3 []struct {
-			Name  string `json:"Name"`
-			Power *int   `json:"Power"`
+			Name   string `json:"Name"`
+			Device string `json:"Device"`
+			Power  *int   `json:"Power"`
 		} `json:"ZbStatus3"`
 	}
 	if err := json.Unmarshal(payload, &wrapper); err != nil {
@@ -135,9 +145,14 @@ func ParseZbStatus3ValvePower(payload []byte) ([]ZbStatus3ValveResult, error) {
 	}
 	out := make([]ZbStatus3ValveResult, 0, len(wrapper.ZbStatus3))
 	for _, item := range wrapper.ZbStatus3 {
-		if item.Name != "" {
-			out = append(out, ZbStatus3ValveResult{DeviceName: item.Name, Power: item.Power})
+		if item.Name == "" && item.Device == "" {
+			continue
 		}
+		out = append(out, ZbStatus3ValveResult{
+			DeviceName: item.Name,
+			ShortAddr:  item.Device,
+			Power:      item.Power,
+		})
 	}
 	return out, nil
 }
