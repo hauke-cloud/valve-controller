@@ -20,13 +20,13 @@ import (
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	iotdevv1alpha1 "github.com/hauke-cloud/mqtt-device-controller/api/v1alpha1"
 	iotv1alpha1 "github.com/hauke-cloud/iot/valve-controller/api/v1alpha1"
 	restapi "github.com/hauke-cloud/iot/valve-controller/internal/api"
 	"github.com/hauke-cloud/iot/valve-controller/internal/k8s"
 	"github.com/hauke-cloud/iot/valve-controller/internal/metrics"
 	"github.com/hauke-cloud/iot/valve-controller/internal/mqtt"
 	"github.com/hauke-cloud/iot/valve-controller/internal/scheduler"
+	iotdevv1alpha1 "github.com/hauke-cloud/mqtt-device-controller/api/v1alpha1"
 )
 
 var scheme = runtime.NewScheme()

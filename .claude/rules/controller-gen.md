@@ -18,6 +18,26 @@ them. It then overwrites the file — losing those implementations while keeping
 to them. The result is `"type X has no field or method DeepCopyInto"` at every call site.
 Deleting the file forces a clean generation where every required method is emitted fresh.
 
+### Pin controller-gen to v0.17.3 or newer
+
+controller-gen **v0.17.0 panics** when the API package contains type aliases (`type X = pkg.Y`,
+as in `api/v1alpha1/imported_types.go`):
+
+```
+panic: interface conversion: types.Type is *types.Alias, not *types.Named
+    pkg/deepcopy/traverse.go:623 shouldBeCopied
+```
+
+Go 1.23+ materializes aliases as `*types.Alias` (`gotypesalias=1`); v0.17.0's deepcopy
+generator asserts `*types.Named` unconditionally. Fixed upstream in **v0.17.3**, so the
+Makefile pins:
+
+```makefile
+CONTROLLER_GEN ?= go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.3
+```
+
+Do not downgrade below v0.17.3 as long as `imported_types.go` exists.
+
 ### generate vs manifests
 
 `make generate` and `make manifests` must be separate invocations of controller-gen:

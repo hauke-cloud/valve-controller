@@ -1,4 +1,4 @@
-CONTROLLER_GEN ?= go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
+CONTROLLER_GEN ?= go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.3
 ENVTEST ?= go run sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: generate manifests setup-envtest build test lint fmt tidy
